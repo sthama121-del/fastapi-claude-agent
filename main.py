@@ -21,13 +21,6 @@ from dotenv import load_dotenv
 
 from fastapi.middleware.cors import CORSMiddleware
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # tighten this in production
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # ── Load your .env file so ANTHROPIC_API_KEY is available ─────────────────────
 load_dotenv()
 
@@ -44,7 +37,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # tighten this in production
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # ==============================================================================
 # REQUEST / RESPONSE SHAPES  (Pydantic keeps our data clean and validated)
 # ==============================================================================
