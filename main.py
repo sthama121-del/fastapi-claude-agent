@@ -28,7 +28,7 @@ load_dotenv()
 client = anthropic.Anthropic()
 
 # ── The model we'll use throughout ────────────────────────────────────────────
-MODEL = "claude-sonnet-4-20250514"
+MODEL = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
 
 # ── FastAPI app instance ───────────────────────────────────────────────────────
 app = FastAPI(

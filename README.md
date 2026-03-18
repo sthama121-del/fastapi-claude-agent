@@ -1,217 +1,225 @@
-# FastAPI + Claude AI Agent
+﻿# FastAPI Claude Agent — Production-Ready AI Agent API
 
-A hands-on project to understand FastAPI from localhost all the way to cloud deployment.
-Uses the **Anthropic Claude API** — no OpenAI key needed.
+> A production-grade REST API wrapping Anthropic Claude with tool-calling (agentic) capabilities, built on FastAPI with full OpenAPI documentation, Pydantic validation, and cloud deployment support.
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-green)](https://fastapi.tiangolo.com/)
+[![Claude](https://img.shields.io/badge/Anthropic-Claude%20Sonnet-purple)](https://anthropic.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## What You'll Learn
+## Problem Statement
 
-- How FastAPI routes work (GET vs POST)
-- How Pydantic validates request/response data
-- How AI tool-calling (agents) work under the hood
-- How to deploy a real app to the cloud for free
+Integrating LLMs into production systems requires more than calling an API — it requires proper request validation, error handling, tool orchestration, token tracking, and a clean interface for downstream consumers. This project demonstrates how to wrap a frontier LLM into a production-ready microservice that other systems can consume reliably.
+
+---
+
+## Architecture
+```
+Client (curl / Postman / frontend)
+          |
+          v
+FastAPI REST API (main.py)
+  - Pydantic request/response validation
+  - CORS middleware
+  - Error handling (401, 502)
+          |
+          v
+Anthropic Claude (claude-sonnet)
+  |
+  |-- /chat          -> Single-turn LLM conversation
+  |-- /chat/weather  -> Agentic tool-calling loop
+          |
+          v (tool-calling flow)
+Tool Execution Layer
+  - Claude decides when to call tools
+  - Python function executes
+  - Result fed back to Claude
+  - Final response returned to client
+```
+
+---
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| GET | `/info` | Agent configuration and available endpoints |
+| POST | `/chat` | Single-turn conversation with Claude |
+| POST | `/chat/weather` | Agentic chat — Claude calls weather tool when needed |
+
+---
+
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| API Framework | FastAPI | REST endpoints with auto OpenAPI docs |
+| LLM | Anthropic Claude Sonnet | Conversation and tool-calling |
+| Validation | Pydantic v2 | Request/response schema enforcement |
+| Server | Uvicorn | ASGI server for async performance |
+| Tool Calling | Anthropic Tool Use API | Agentic function execution |
+| Config | python-dotenv | Environment variable management |
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.10+
+- Anthropic API key from https://console.anthropic.com
+
+### Installation
+
+Clone the repository:
+  git clone https://github.com/sthama121-del/fastapi-claude-agent.git
+  cd fastapi-claude-agent
+
+Create virtual environment:
+  python -m venv .venv
+
+Activate on Windows:
+  .venv\Scripts\Activate.ps1
+
+Activate on macOS/Linux:
+  source .venv/bin/activate
+
+Install dependencies:
+  pip install -r requirements.txt
+
+Configure API key:
+  Create a .env file in the root directory:
+  ANTHROPIC_API_KEY=your-key-here
+
+Run the server:
+  python main.py
+
+API is live at http://localhost:8000
+Interactive docs at http://localhost:8000/docs
+
+---
+
+## Usage
+
+### Plain conversation
+
+  POST /chat
+  {"message": "Explain the medallion architecture in data engineering"}
+
+### Custom system prompt
+
+  POST /chat
+  {"message": "What is 2+2?", "system_prompt": "You are a data engineer. Answer everything with a data analogy."}
+
+### Agentic tool-calling
+
+  POST /chat/weather
+  {"message": "What is the weather like in Tokyo?"}
+
+The agent automatically decides when to invoke the weather tool, executes it, and incorporates the result into its response — no manual orchestration required.
+
+---
+
+## How Tool Calling Works
+```
+User: "What is the weather in Tokyo?"
+        |
+        v
+Round 1: Claude receives message + tool definition
+        |
+        v
+Claude decides: call get_weather(city="Tokyo")
+        |
+        v
+Python function executes -> returns weather data
+        |
+        v
+Round 2: Claude receives tool result
+        |
+        v
+Claude generates final natural language response
+```
+
+This is the core pattern behind production AI agents — the LLM reasons about when to use tools, your code executes them, and the LLM synthesizes the results.
+
+---
+
+## API Response Schema
+
+Every /chat and /chat/weather response returns:
+
+  {
+    "reply": "Claude's response text",
+    "model": "claude-sonnet-4-20250514",
+    "input_tokens": 42,
+    "output_tokens": 187
+  }
+
+Token counts are returned on every call for cost tracking and observability.
+
+---
+
+## Deployment
+
+The app is cloud-ready. Deploy to any platform that supports Python:
+
+### Render (free tier)
+Build command: pip install -r requirements.txt
+Start command: uvicorn main:app --host 0.0.0.0 --port $PORT
+Environment variable: ANTHROPIC_API_KEY
+
+### Docker
+  FROM python:3.11-slim
+  WORKDIR /app
+  COPY . .
+  RUN pip install -r requirements.txt
+  CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+---
+
+## Business Value
+
+| Dimension | Impact |
+|-----------|--------|
+| Reusability | Any frontend or service can consume the API via REST |
+| Observability | Token usage returned on every call for cost monitoring |
+| Extensibility | New tools added as Python functions with JSON schema definitions |
+| Reliability | Structured error handling for auth failures and API errors |
+| Documentation | Auto-generated OpenAPI docs at /docs — zero extra effort |
+
+---
+
+## Future Enhancements
+
+- Conversation memory — persist message history across turns using Redis
+- Multiple tools — calculator, database query, web search tool support
+- Streaming responses — real-time token streaming via Server-Sent Events
+- Authentication — API key middleware for securing endpoints
+- Rate limiting — per-client request throttling
+- Azure deployment — containerized deployment on Azure Container Apps
 
 ---
 
 ## Project Structure
 
-```
 fastapi-claude-agent/
-├── main.py            ← the entire app lives here
-├── requirements.txt   ← Python dependencies
-├── .env.example       ← template — copy this to .env
-└── README.md
-```
+  main.py            FastAPI application and all endpoints
+  index.html         Frontend UI for browser-based testing
+  requirements.txt   Python dependencies
+  .gitignore         Git exclusions
+  README.md          This file
 
 ---
 
-## Step 1 — Local Setup
+## Author
 
-### 1.1  Clone or download this project
-
-```bash
-git clone <your-repo-url>
-cd fastapi-claude-agent
-```
-
-### 1.2  Create a virtual environment
-
-```bash
-# Mac / Linux
-python3 -m venv venv
-source venv/bin/activate
-
-# Windows
-python -m venv venv
-venv\Scripts\activate
-```
-
-### 1.3  Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 1.4  Add your API key
-
-```bash
-cp .env.example .env
-```
-
-Open `.env` and replace `your-anthropic-api-key-here` with your real key.
-
-### 1.5  Run the server
-
-```bash
-python main.py
-```
-
-You should see:
-```
-🚀  Server starting on http://localhost:8000
-📖  Docs available at http://localhost:8000/docs
-```
+Srikanth — Senior Data Engineer / AI Engineer
+Specializing in agentic AI systems, API design, and GenAI pipelines.
 
 ---
 
-## Step 2 — Explore the API
+## License
 
-### Option A — Interactive Docs (easiest)
-Open your browser: **http://localhost:8000/docs**
-
-FastAPI auto-generates a full UI where you can click and test every endpoint.
-
-### Option B — cURL from your terminal
-
-**Health check:**
-```bash
-curl http://localhost:8000/
-```
-
-**Plain chat:**
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Tell me a fun fact about space"}'
-```
-
-**Chat with custom personality:**
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "What is 2+2?", "system_prompt": "You are a pirate. Answer everything like a pirate."}'
-```
-
-**Weather agent (tool-calling):**
-```bash
-curl -X POST http://localhost:8000/chat/weather \
-  -H "Content-Type: application/json" \
-  -d '{"message": "What is the weather like in Tokyo?"}'
-```
-
-### Option C — Use Postman
-1. Create a POST request to `http://localhost:8000/chat`
-2. Set Body → raw → JSON
-3. Paste: `{"message": "Hello Claude!"}`
-4. Hit Send
-
----
-
-## Step 3 — Understand What's Happening
-
-### Why two endpoints?
-
-| `/chat` | `/chat/weather` |
-|---|---|
-| Pure conversation | Claude can call a Python function |
-| 1 API call | Up to 2 API calls (ask → tool → answer) |
-| No tools | Uses tool_use / agentic loop |
-
-### The tool-calling flow (agents explained):
-
-```
-User: "What's the weather in Komuravelli?"
-        ↓
-  Round 1: Claude receives message + tool definition
-        ↓
-  Claude replies: "I should call get_weather(city='Komuravelli')"
-        ↓
-  Your Python function runs → returns "12°C, overcast"
-        ↓
-  Round 2: Claude receives the tool result
-        ↓
-  Claude replies: "The weather in Komuravelli is 12°C and overcast."
-```
-
-This is exactly how real AI agents work — the LLM decides *when* to call a tool,
-your code runs it, and the LLM incorporates the result.
-
----
-
-## Step 4 — Deploy to Render (Free)
-
-Render.com has a free tier that's perfect for experimenting.
-
-### 4.1  Push your code to GitHub
-
-```bash
-git init
-git add .
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
-```
-
-### 4.2  Create a Render account
-Go to https://render.com and sign up (free).
-
-### 4.3  Create a new Web Service
-1. Click **New → Web Service**
-2. Connect your GitHub repo
-3. Fill in these settings:
-
-| Field | Value |
-|---|---|
-| **Name** | `claude-agent` (or anything) |
-| **Runtime** | Python 3 |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
-
-### 4.4  Add your environment variable
-Under **Environment** tab:
-- Key: `ANTHROPIC_API_KEY`
-- Value: your actual API key
-
-### 4.5  Deploy
-Click **Create Web Service**. Render will build and deploy (~2 min).
-
-Your app will be live at: `https://claude-agent.onrender.com`
-
-Test it:
-```bash
-curl -X POST https://claude-agent.onrender.com/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello from the cloud!"}'
-```
-
----
-
-## Experiments to Try
-
-Once it's working, try modifying the code yourself:
-
-1. **Add a new tool** — e.g. a calculator that does math
-2. **Add a new endpoint** — e.g. `/summarise` that accepts long text
-3. **Change the model** — swap `claude-sonnet-4-20250514` for `claude-haiku-4-5-20251001` (cheaper/faster)
-4. **Add conversation memory** — store a list of past messages and include them each call
-
----
-
-## Cost Awareness
-
-Claude charges per token (words in + words out).
-The token counts are returned in every response so you can track usage.
-
-For this kind of simple agent, each call typically costs < $0.01.
+MIT License — free to use, modify, and distribute.
