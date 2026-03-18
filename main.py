@@ -24,6 +24,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # ── Load your .env file so ANTHROPIC_API_KEY is available ─────────────────────
 load_dotenv()
 
+APP_SECRET = os.getenv("APP_SECRET", "")
+
 # ── Initialise the Anthropic client (reads ANTHROPIC_API_KEY automatically) ───
 client = anthropic.Anthropic()
 
@@ -43,6 +45,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from fastapi import Depends, Header
+
+def verify_token(x_api_key: str = Header(...)):
+    if not APP_SECRET or x_api_key != APP_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
 # ==============================================================================
 # REQUEST / RESPONSE SHAPES  (Pydantic keeps our data clean and validated)
 # ==============================================================================
@@ -119,7 +128,7 @@ def info():
 
 # ── Plain chat ─────────────────────────────────────────────────────────────────
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_token)])
 def chat(request: ChatRequest):
     """
     Send any message and get a Claude reply.
@@ -154,7 +163,7 @@ def chat(request: ChatRequest):
 
 # ── Tool-calling chat (the "agent" behaviour) ─────────────────────────────────
 
-@app.post("/chat/weather", response_model=ChatResponse)
+@app.post("/chat/weather", response_model=ChatResponse, dependencies=[Depends(verify_token)])
 def chat_with_weather_tool(request: ChatRequest):
     """
     Same as /chat but Claude can now *call the weather tool* when relevant.
